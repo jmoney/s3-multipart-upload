@@ -1,0 +1,155 @@
+project_name: s3-multipart-upload
+
+builds:
+  -
+    id: s3-multipart-upload
+    main: ./cmd/cli
+    binary: s3-multipart-upload
+
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+# dockers:
+#   # You can have multiple Docker images.
+#   -
+#     # ID of the image, needed if you want to filter by it later on (e.g. on custom publishers).
+#     id: echo-server
+
+#     # GOOS of the built binaries/packages that should be used.
+#     goos: linux
+
+#     # GOARCH of the built binaries/packages that should be used.
+#     goarch: amd64
+
+#     # GOAMD64 of the built binaries/packages that should be used.
+#     goamd64: 'v1'
+
+#     # IDs to filter the binaries/packages.
+#     ids:
+#       - echo-server
+
+#     # Templates of the Docker image names.
+#     image_templates:
+#       - "ghcr.io/jmoney/echo-server:latest"
+#       - "ghcr.io/jmoney/echo-server:{{ .Tag }}"
+#       - "ghcr.io/jmoney/echo-server:v{{ .Major }}"
+
+#     dockerfile: 'Dockerfile'
+
+#     use: docker
+
+# .goreleaser.yaml
+brews:
+  -
+    name: "s3-multipart-upload@{{ .Tag }}"
+
+    repository:
+      owner: jmoney
+      name: homebrew-aws
+
+      branch: main
+
+      token: "{{ .Env.GITHUB_TOKEN }}"
+
+    # Git author used to commit to the repository.
+    # Defaults are shown.
+    commit_author:
+      name: goreleaserbot
+      email: release@jmoney.dev
+
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+
+    folder: Formula
+
+    homepage: "https://jmoney.dev/s3-multipart-upload"
+
+    description: "Multipart uploads files to s3 with checkpointing"
+
+    # SPDX identifier of your app's license.
+    # Default is empty.
+    license: "Apache 2.0"
+
+    # Setting this will prevent goreleaser to actually try to commit the updated
+    # formula - instead, the formula file will be stored on the dist folder only,
+    # leaving the responsibility of publishing it to the user.
+    # If set to auto, the release will not be uploaded to the homebrew tap
+    # in case there is an indicator for prerelease in the tag e.g. v1.0.0-rc1
+    # Default is false.
+    #    skip_upload: true
+
+    # So you can `brew test` your formula.
+    # Default is empty.
+    test: |
+      system "#{bin}/s3-multipart-upload -h"
+
+    # Custom install script for brew.
+    # Default is 'bin.install "program"'.
+    install: |
+      bin.install "s3-multipart-upload"
+  -
+    name: "s3-multipart-upload"
+
+    repository:
+      owner: jmoney
+      name: homebrew-aws
+
+      branch: main
+
+      token: "{{ .Env.GITHUB_TOKEN }}"
+
+    # Git author used to commit to the repository.
+    # Defaults are shown.
+    commit_author:
+      name: goreleaserbot
+      email: release@jmoney.dev
+
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+
+    folder: Formula
+
+    homepage: "https://jmoney.dev/s3-multipart-upload"
+
+    description: "Multipart uploads files to S3 with checkpointing"
+
+    # SPDX identifier of your app's license.
+    # Default is empty.
+    license: "Apache 2.0"
+
+    # Setting this will prevent goreleaser to actually try to commit the updated
+    # formula - instead, the formula file will be stored on the dist folder only,
+    # leaving the responsibility of publishing it to the user.
+    # If set to auto, the release will not be uploaded to the homebrew tap
+    # in case there is an indicator for prerelease in the tag e.g. v1.0.0-rc1
+    # Default is false.
+    #    skip_upload: true
+
+    # So you can `brew test` your formula.
+    # Default is empty.
+    test: |
+      system "#{bin}/s3-multipart-upload -h"
+
+    # Custom install script for brew.
+    # Default is 'bin.install "program"'.
+    install: |
+      bin.install "s3-multipart-upload"
