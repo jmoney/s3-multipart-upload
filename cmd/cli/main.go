@@ -34,7 +34,6 @@ var (
 	bucketName    = flag.String("bucket", "", "Bucket name")
 	dirName       = flag.String("dir", "", "Directory name")
 	checkpointDir = flag.String("checkpoint", "", "Checkpoint directory")
-	region        = flag.String("region", "", "Region name")
 
 	Info  *log.Logger
 	Warn  *log.Logger
@@ -49,7 +48,7 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if *bucketName == "" || *dirName == "" || *region == "" || *checkpointDir == "" {
+	if *bucketName == "" || *dirName == "" || *checkpointDir == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -64,7 +63,7 @@ func main() {
 			wg.Add(1)
 			go func(fileName string) {
 				defer wg.Done()
-				err := uploadFile(*bucketName, *dirName, fileName, *region)
+				err := uploadFile(*bucketName, *dirName, fileName)
 				if err != nil {
 					Error.Println(err)
 				}
@@ -75,15 +74,13 @@ func main() {
 	Info.Printf("Total time taken: %v\n", time.Since(start))
 }
 
-func uploadFile(bucketName, dirName, fileName, region string) error {
+func uploadFile(bucketName, dirName, fileName string) error {
 	file, err := os.Open(filepath.Join(dirName, fileName))
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(region),
-	})
+	sess, err := session.NewSession()
 	if err != nil {
 		return err
 	}
@@ -98,10 +95,12 @@ func uploadFile(bucketName, dirName, fileName, region string) error {
 
 	if len(completedParts) > 0 {
 		// seek the file to the end of the last completed part
+		offset := int64(0)
 		for _, part := range completedParts {
-			file.Seek(*part.Size, io.SeekCurrent)
+			offset += *part.Size
 		}
 
+		file.Seek(offset, io.SeekStart)
 		partNumber = *completedParts[len(completedParts)-1].PartNumber
 	}
 
