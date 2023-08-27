@@ -83,6 +83,10 @@ func uploadFile(bucketName, dirName, fileName, region string) error {
 	var numParts int
 	uploadId, partNumber, checkpoint := findOrCreateMultipartUpload(svc, bucketName, dirName, fileName)
 	defer checkpoint.Close()
+
+	// seek to the last checkpoint
+	file.Seek(partNumber*partSize, io.SeekStart)
+
 	for {
 		partNumber++
 		buffer := make([]byte, partSize)
@@ -112,6 +116,12 @@ func uploadFile(bucketName, dirName, fileName, region string) error {
 
 		numParts++
 	}
+
+	svc.CompleteMultipartUpload(&s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(bucketName),
+		Key:      aws.String(strings.TrimPrefix(filepath.Join(dirName, fileName), "/")),
+		UploadId: uploadId,
+	})
 
 	fmt.Printf("Successfully uploaded %s to %s\n", fileName, bucketName)
 	return nil
