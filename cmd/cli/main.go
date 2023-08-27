@@ -1,9 +1,3 @@
-// Write a program that multipart uploads multiple files to s3 using goroutines and channels.
-// The program should take a directory as input and upload all files concurrently.
-// The program should output the total number of files processed and elapsed time.
-// The program should be able to handle errors gracefully.
-// The program should be able to handle large files.
-
 package main
 
 import (
@@ -27,7 +21,7 @@ import (
 )
 
 var (
-	PART_SIZE = 5 * 1024 * 1024 // 5MB per part
+	PART_SIZE = 100 * 1024 * 1024 // 100MB per part
 
 	bucketName    = flag.String("bucket", "", "Bucket name")
 	dirName       = flag.String("dir", "", "Directory name")
@@ -98,6 +92,7 @@ func uploadFile(bucketName, dirName, fileName, region string) error {
 			break
 		}
 
+		log.Printf("Uploading part %d of %s\n", partNumber, filepath.Join(dirName, fileName))
 		_, err = svc.UploadPart(&s3.UploadPartInput{
 			Body:       bytes.NewReader(buffer),
 			Bucket:     aws.String(bucketName),
@@ -112,7 +107,9 @@ func uploadFile(bucketName, dirName, fileName, region string) error {
 
 		// Now, we need to checkpoint parts to a local file to we can restart if network becomes unstable
 		// We can use a local file to store the checkpoint
+		checkpoint.Seek(0, io.SeekStart)
 		checkpoint.Write([]byte(fmt.Sprintf("%s,%d\n", *uploadId, partNumber)))
+		checkpoint.Sync()
 
 		numParts++
 	}
@@ -128,13 +125,13 @@ func uploadFile(bucketName, dirName, fileName, region string) error {
 }
 
 func findOrCreateMultipartUpload(svc *s3.S3, bucketName, dirName, fileName string) (*string, int64, *os.File) {
-	sum := sha256.Sum256([]byte(fileName))
+	sum := sha256.Sum256([]byte(filepath.Join(dirName, fileName)))
 	checkpointName := filepath.Join(*checkpointDir, fmt.Sprintf("%x", sum))
-	checkpoint, err := os.OpenFile(checkpointName, os.O_RDWR|os.O_TRUNC, 0755)
+	checkpoint, err := os.OpenFile(checkpointName, os.O_RDWR, 0755)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			log.Fatal(err)
-		} else {
+		} else if errors.Is(err, os.ErrNotExist) || checkpoint == nil || must(checkpoint.Stat()).Size() == 0 {
 			multipartUloadOutput, err := svc.CreateMultipartUpload(&s3.CreateMultipartUploadInput{
 				Bucket: aws.String(bucketName),
 				Key:    aws.String(strings.TrimPrefix(filepath.Join(dirName, fileName), "/")),
@@ -163,10 +160,11 @@ func findOrCreateMultipartUpload(svc *s3.S3, bucketName, dirName, fileName strin
 	}
 
 	return aws.String(strings.Split(string(buf), ",")[0]),
-		must(strconv.ParseInt(strings.Split(string(buf), ",")[1], 10, 64)),
+		must(strconv.ParseInt(strings.TrimSpace(strings.Split(string(buf), ",")[1]), 10, 64)),
 		checkpoint
 }
 
+// Function that take a tuple of a value and error.  If error is not nil, it exits and logs. Else, returns the value.
 func must[T any](value T, err error) T {
 	if err != nil {
 		log.Fatal(err)
